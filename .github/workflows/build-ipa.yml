@@ -1,0 +1,47 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: xcodebuild (unsigned, for AltStore sideload)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: App
+        run: xcodegen generate
+
+      - name: Build (unsigned)
+        working-directory: App
+        run: |
+          xcodebuild build \
+            -project FitnessTracker.xcodeproj \
+            -scheme FitnessTracker \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package .ipa
+        working-directory: App
+        run: |
+          mkdir -p Payload
+          cp -r build/Build/Products/Release-iphoneos/FitnessTracker.app Payload/
+          zip -r FitnessTracker.ipa Payload
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FitnessTracker-ipa
+          path: App/FitnessTracker.ipa
+          retention-days: 30
