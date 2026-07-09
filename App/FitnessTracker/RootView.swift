@@ -2,30 +2,19 @@ import SwiftUI
 import FitnessCore
 
 struct RootView: View {
+    @State private var model = AppModel()
+
     var body: some View {
         TabView {
-            LiftPlaceholderView()
+            LiftHomeView()
                 .tabItem { Label("Lift", systemImage: "dumbbell") }
             RunPlaceholderView()
                 .tabItem { Label("Run", systemImage: "figure.run") }
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
         }
-    }
-}
-
-/// M0 placeholder — replaced by the template builder + session logger in M2.
-struct LiftPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            List(ExerciseCatalog.all.sorted(by: { $0.name < $1.name })) { exercise in
-                VStack(alignment: .leading) {
-                    Text(exercise.name)
-                    Text(exercise.primaryMuscles.map(\.displayName).joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .navigationTitle("Exercises")
-        }
+        .environment(model)
+        .task { await model.loadIfNeeded() }
     }
 }
 
@@ -41,6 +30,9 @@ struct RunPlaceholderView: View {
                 Text("Goal: \(PaceFormatter.timeString(goal.targetTime))")
                 Text("Required pace: \(PaceFormatter.paceString(secPerMile: goal.requiredPaceSecPerMile))")
                     .foregroundStyle(.secondary)
+                Text("Live pace coaching arrives with the watch app (M4).")
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
             }
             .navigationTitle("Run")
         }
