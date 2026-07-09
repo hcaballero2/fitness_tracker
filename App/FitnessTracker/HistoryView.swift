@@ -42,6 +42,8 @@ struct SessionDetailView: View {
     @Environment(AppModel.self) private var model
     let session: WorkoutSession
 
+    @State private var showingMuscles = false
+
     var body: some View {
         List {
             ForEach(session.performances, id: \.exerciseID) { performance in
@@ -59,5 +61,19 @@ struct SessionDetailView: View {
         }
         .navigationTitle(session.date.formatted(date: .abbreviated, time: .shortened))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            Button {
+                showingMuscles = true
+            } label: {
+                Label("Muscles", systemImage: "figure.arms.open")
+            }
+        }
+        .sheet(isPresented: $showingMuscles) {
+            NavigationStack {
+                MuscleBreakdownView(session: session)
+                    .navigationTitle("Muscles Worked")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+        }
     }
 }

@@ -77,52 +77,62 @@ struct SetRow: View {
     }
 }
 
-/// End-of-workout summary: per-muscle volume. The body-diagram heatmap
-/// replaces the bar list in M3.
+/// End-of-workout summary: body heatmap + per-muscle volume detail.
 struct WorkoutSummaryView: View {
-    @Environment(AppModel.self) private var model
     let session: WorkoutSession
     let onDone: () -> Void
 
-    private var scores: [(muscle: MuscleGroup, score: Double)] {
+    var body: some View {
+        NavigationStack {
+            MuscleBreakdownView(session: session)
+                .navigationTitle("Nice work!")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { onDone() }
+                    }
+                }
+        }
+    }
+}
+
+/// Shared muscle analysis: heatmap figures + sorted volume bars.
+/// Used by the end-of-workout summary and session history detail.
+struct MuscleBreakdownView: View {
+    @Environment(AppModel.self) private var model
+    let session: WorkoutSession
+
+    private var scores: [MuscleGroup: Double] {
         MuscleMap.normalizedScores(
             performances: session.performances,
             catalog: model.repository.exercisesByID
         )
-        .sorted { $0.value > $1.value }
-        .map { (muscle: $0.key, score: $0.value) }
     }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Muscles worked") {
-                    if scores.isEmpty {
-                        Text("No completed sets.")
-                            .foregroundStyle(.secondary)
-                    }
-                    ForEach(scores, id: \.muscle) { entry in
+        let scores = self.scores
+        List {
+            Section {
+                if scores.isEmpty {
+                    Text("No completed sets.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    BodyHeatmapView(scores: scores)
+                        .padding(.vertical, 8)
+                }
+            }
+            if !scores.isEmpty {
+                Section("Volume by muscle") {
+                    ForEach(scores.sorted { $0.value > $1.value }, id: \.key) { muscle, score in
                         HStack {
-                            Text(entry.muscle.displayName)
+                            Text(muscle.displayName)
                                 .frame(width: 120, alignment: .leading)
-                            ProgressView(value: entry.score)
-                                .tint(color(for: entry.score))
+                            ProgressView(value: score)
+                                .tint(BodyHeatmapView.heat(score))
                         }
                     }
                 }
             }
-            .navigationTitle("Nice work!")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { onDone() }
-                }
-            }
         }
-    }
-
-    private func color(for score: Double) -> Color {
-        // Cool → hot ramp matching the future M3 heatmap.
-        score > 0.66 ? .red : score > 0.33 ? .orange : .yellow
     }
 }
